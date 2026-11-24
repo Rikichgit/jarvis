@@ -1,0 +1,6 @@
+vosk
+sounddevice
+pyautogui
+opencv-python
+pillow
+pyperclip

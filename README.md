@@ -1,12 +1,15 @@
- Jarvis — offline voice macros for Windows
+[README.md](https://github.com/user-attachments/files/35310512/README.md)
+# Jarvis — offline voice macros for Windows
 
-Jarvis listens to your microphone **fully offline** (using [Vosk](https://alphacephei.com/vosk/)), waits for the wake word **"Джарвис"** (Jarvis), and runs a macro that matches the phrase you say next.
+Jarvis listens to your microphone **fully offline** (using [Vosk](https://alphacephei.com/vosk/)), waits for a wake word (by default **"Джарвис"** / "Jarvis"), and runs the macro that matches the phrase you say next.
 
 Macros are created in a simple GUI: you pick activation phrases and build a sequence of actions (launch files, open websites, click, type text, press hotkeys, wait, run commands). No coding required.
 
+> **The speech model is not included in this repository.** You choose and download the Vosk model for your own language (see [Installation](#installation)).
+
 ## Features
 
-- Offline speech recognition (Vosk, small Russian model)
+- Offline speech recognition with any Vosk language model
 - Wake word + command, e.g. *"Джарвис, открой блокнот"*
 - GUI to create, view, edit, run and delete macros
 - Action types:
@@ -51,22 +54,32 @@ Macros are created in a simple GUI: you pick activation phrases and build a sequ
 3. Install dependencies:
 
    ```bash
-   python -m pip install vosk sounddevice pyautogui opencv-python pillow pyperclip
+   python -m pip install -r requirements.txt
    ```
 
-4. Download a Vosk model from <https://alphacephei.com/vosk/models>.
-   The project is built for **`vosk-model-small-ru-0.22`** (about 45 MB).
+4. **Download a Vosk model for your language** from <https://alphacephei.com/vosk/models>.
+   - Small models (about 40–50 MB) are fast and good enough to start with.
+   - Larger models are more accurate but heavier and slower to load.
 
 5. Unpack the model so that the folder is called `model` and sits next to `jarvis.py`:
 
    ```
    <your-repo>/
    ├── jarvis.py
-   ├── model/              <- Vosk model (contains am/, conf/, graph/ ...)
+   ├── requirements.txt
+   ├── model/              <- the Vosk model you downloaded (contains am/, conf/, graph/ ...)
    └── macros/             <- created automatically
    ```
 
-   The script also finds a folder named `vosk-model-*` next to it, but make sure the model's files are not nested one level too deep.
+   The script also finds a folder named `vosk-model-*` next to it, but make sure the model's files are not nested one level too deep (`model/am`, not `model/some-folder/am`).
+
+6. **Set the wake word for your language.** The default wake words in `jarvis.py` are Russian spellings of "Jarvis". If your model is not Russian, open `jarvis.py` and edit the `WAKE_WORDS` list to a word your model recognizes, for example:
+
+   ```python
+   WAKE_WORDS = ["jarvis"]
+   ```
+
+   Run the script, say the wake word, and check the log (see below) to see how the model actually spells it. Add every variant you see.
 
 ## Usage
 
@@ -78,10 +91,12 @@ python jarvis.py
 
 Confirm the UAC prompt. The main menu opens:
 
-- **Activate control** — starts listening. The window shows a live log, including what the recognizer heard (`Услышал: ...`).
-- **Create macro** — opens the macro editor.
-- **My macros** — view, edit, run and delete macros.
+- **Activate control**: starts listening. The window shows a live log, including what the recognizer heard (`Услышал: ...`).
+- **Create macro**: opens the macro editor.
+- **My macros**: view, edit, run and delete macros.
 - **Exit**
+
+> The interface texts and the `Услышал:` log prefix are in Russian. The examples in this README use Russian phrases, but your phrases should be in the language of the model you installed.
 
 ### Running macros by voice
 
@@ -95,21 +110,21 @@ Matching rules:
 
 - A macro fires when one of its phrases appears in the spoken command as whole words.
 - If several macros match, the one with the **longest** phrase wins.
-- Use specific phrases. A very short phrase like "гугл" would also fire on "найди в гугле ...".
+- Use specific phrases. A very short phrase such as "google" would also fire on "search google for ...".
 
 ### Creating a macro
 
 1. Click **Create macro**.
 2. Enter a **name**.
-3. Add one or more **activation phrases** to the table (what you say after "Джарвис").
+3. Add one or more **activation phrases** to the table (what you say after the wake word).
 4. Set the **default delay** between actions (seconds).
 5. Build the action list with **Add**. You can edit an action by double-clicking it, and delete it or reorder it with the ↑ / ↓ buttons.
 6. Click **Save macro**.
 
 Tips:
 
-- Write phrases the way Vosk *hears* them. Check the `Услышал: ...` lines in the control window and copy the exact wording. The small model sometimes mishears words.
-- For **Click at coordinates**, press *Select point on screen*, then click the desired spot on the darkened screen (Esc cancels).
+- Write phrases the way the model *hears* them. Check the `Услышал: ...` lines in the control window and copy the exact wording. Small models sometimes mishear words.
+- For **Click at coordinates**, press the point-selection button, then click the desired spot on the darkened screen (Esc cancels).
 - For **Click on image**, save a cropped screenshot (PNG) of the button or icon. It must look the same as on screen (same theme and scaling). The script waits up to the timeout you set and aborts the macro if the image is not found.
 - The default delay is applied between actions, but not after a *Wait* action and not after the last action.
 
@@ -142,11 +157,9 @@ Constants at the top of `jarvis.py`:
 
 | Constant | Meaning |
 |---|---|
-| `WAKE_WORDS` | Accepted spellings of the wake word. Add more if the recognizer mishears it |
+| `WAKE_WORDS` | Accepted spellings of the wake word. Must match how your model writes it |
 | `ARMED_SECONDS` | How long Jarvis waits for a phrase after hearing only the wake word |
 | `SAMPLE_RATE` | Audio sample rate (16000 for Vosk models) |
-
-To use another language, download the matching Vosk model and change `WAKE_WORDS`.
 
 ## Safety notes
 
@@ -158,14 +171,23 @@ To use another language, download the matching Vosk model and change `WAKE_WORDS
 
 | Problem | Fix |
 |---|---|
-| `ModuleNotFoundError: No module named 'sounddevice'` (or another module) | The packages were installed into a different Python. Run `python -m pip install ...` with the same interpreter / virtual environment you use to run the script |
-| "Vosk model not found" in the log | Check that the `model` folder contains `am`, `conf`, `graph` directly (no extra nested folder) |
+| `ModuleNotFoundError: No module named 'sounddevice'` (or another module) | The packages were installed into a different Python. Run `python -m pip install -r requirements.txt` with the same interpreter / virtual environment you use to run the script |
+| "Модель Vosk не найдена" in the log (model not found) | Check that the `model` folder contains `am`, `conf`, `graph` directly (no extra nested folder) |
 | Wake word is not recognized | Look at the `Услышал: ...` log lines and add the heard variant to `WAKE_WORDS` |
 | Nothing is heard | Make sure the right microphone is set as the Windows default input device |
 | Image click never finds the image | Re-take the screenshot at the current screen scaling and theme |
 | Macro does nothing after a click-by-coordinates step | Re-pick the point. Coordinates depend on resolution and window position |
 
-## Suggested `.gitignore`
+## Repository contents
+
+```
+jarvis.py          the whole application
+requirements.txt   Python dependencies
+README.md          this file
+.gitignore         keeps the model, macros and virtual environment out of git
+```
+
+Suggested `.gitignore`:
 
 ```
 .venv/
@@ -174,4 +196,4 @@ model/
 macros/
 ```
 
-The Vosk model is large and should not be committed. Download it separately as described above.
+The Vosk model is large and personal macros may contain local paths, so neither should be committed.
